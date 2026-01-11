@@ -1,10 +1,9 @@
 package sqlite
 
 import (
+	"brain/core/object"
 	"database/sql"
 	"encoding/json"
-
-	"brain/core/object"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -54,6 +53,34 @@ func (s *Store) Put(o *object.Object) {
 			panic(err)
 		}
 	}
+}
+
+func (s *Store) GetByType(typ string) []*object.Object {
+	if typ == "" {
+		return s.All()
+	}
+	rows, err := s.db.Query(`SELECT id,type,author,body,signature FROM objects WHERE type = ?`, typ)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+
+	var out []*object.Object
+	for rows.Next() {
+		o := object.Object{}
+		var body []byte
+		var id []byte
+		var author []byte
+		err = rows.Scan(&id, &o.Type, &author, &body, &o.Signature)
+		if err != nil {
+			panic(err)
+		}
+		copy(o.ID[:], id)
+		o.Author = author
+		o.Body = body
+		out = append(out, &o)
+	}
+	return out
 }
 
 func (s *Store) All() []*object.Object {

@@ -10,6 +10,7 @@ import (
 type Task struct {
 	Title  string `json:"title"`
 	Status string `json:"status"`
+	Due    string `json:"due,omitempty"`
 }
 
 type TaskHandler struct{}

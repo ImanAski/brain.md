@@ -3,7 +3,9 @@ package sqlite
 import (
 	"brain/core/object"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -34,6 +36,69 @@ func Open(path string) *Store {
 		panic(err)
 	}
 	return &Store{db}
+}
+
+func (s *Store) Get(id object.ID) (*object.Object, error) {
+	row := s.db.QueryRow(`SELECT id,type,author,body,signature FROM objects WHERE id = ?`, id[:])
+	o := object.Object{}
+	var body []byte
+	var sid []byte
+	var author []byte
+	err := row.Scan(&sid, &o.Type, &author, &body, &o.Signature)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	copy(o.ID[:], sid)
+	o.Author = author
+	o.Body = body
+	return &o, nil
+}
+
+func (s *Store) Has(id object.ID) (bool, error) {
+	var count int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM objects WHERE id = ?`, id[:]).Scan(&count)
+	return count > 0, err
+}
+
+func (s *Store) ResolveID(prefix string) (object.ID, error) {
+	if len(prefix) == 64 { // Full ID
+		var id object.ID
+		raw, err := hex.DecodeString(prefix)
+		if err != nil {
+			return id, err
+		}
+		copy(id[:], raw)
+		return id, nil
+	}
+
+	rows, err := s.db.Query(`SELECT id FROM objects WHERE hex(id) LIKE ?`, prefix+"%")
+	if err != nil {
+		return object.ID{}, err
+	}
+	defer rows.Close()
+
+	var ids []object.ID
+	for rows.Next() {
+		var raw []byte
+		var id object.ID
+		if err := rows.Scan(&raw); err != nil {
+			return id, err
+		}
+		copy(id[:], raw)
+		ids = append(ids, id)
+	}
+
+	if len(ids) == 0 {
+		return object.ID{}, fmt.Errorf("no object found with prefix %s", prefix)
+	}
+	if len(ids) > 1 {
+		return object.ID{}, fmt.Errorf("ambiguous prefix %s: matched %d objects", prefix, len(ids))
+	}
+
+	return ids[0], nil
 }
 
 func (s *Store) Put(o *object.Object) {

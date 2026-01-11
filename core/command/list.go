@@ -15,13 +15,18 @@ var listCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		for _, o := range GlobalContext.Store.GetByType(typ) {
-			h := handler.Get(o.Type)
-			if h == nil {
-				fmt.Printf("No handler for type %s\n", o.Type)
+
+		heads := GlobalContext.Store.Heads()
+		for _, o := range heads {
+			if typ != "" && o.Type != typ {
 				continue
 			}
-			fmt.Printf("%s\n", h.Render(o))
+			h := handler.Get(o.Type)
+			if h == nil {
+				fmt.Printf("%x (No handler for type %s)\n", o.ID, o.Type)
+				continue
+			}
+			fmt.Printf("\033[33m%x\033[0m [\033[36m%s\033[0m] %s\n", o.ID[:4], o.Type, h.Render(o))
 		}
 		return nil
 	},

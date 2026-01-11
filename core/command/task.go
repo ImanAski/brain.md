@@ -26,7 +26,12 @@ var taskCmd = &cobra.Command{
 			parents = append(parents, id)
 		}
 
-		body, _ := json.Marshal(map[string]string{"title": title, "status": "todo"})
+		due, _ := cmd.Flags().GetString("due")
+		body, _ := json.Marshal(map[string]string{
+			"title":  title,
+			"status": "todo",
+			"due":    due,
+		})
 		o, err := object.New(GlobalContext.Keys["public"], "task", body, parents, GlobalContext.Keys["private"])
 		if err != nil {
 			return err
@@ -38,5 +43,6 @@ var taskCmd = &cobra.Command{
 }
 
 func init() {
+	taskCmd.Flags().StringP("due", "d", "", "Due date (YYYY-MM-DD)")
 	Register(taskCmd)
 }

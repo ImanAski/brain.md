@@ -23,7 +23,7 @@ var headsCmd = &cobra.Command{
 				fmt.Printf("%x (No handler for type %s)\n", o.ID, o.Type)
 				continue
 			}
-			fmt.Printf("%x [%s] %s\n", o.ID, o.Type, h.Render(o))
+			fmt.Printf("\033[33m%x\033[0m [\033[36m%s\033[0m] %s\n", o.ID[:4], o.Type, h.Render(o))
 		}
 		return nil
 	},

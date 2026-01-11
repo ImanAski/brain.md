@@ -2,25 +2,23 @@ package command
 
 import (
 	"brain/adapters/store/sqlite"
+
+	"github.com/spf13/cobra"
 )
 
 type Context struct {
-	Args     []string
 	RootPath string
 	Store    *sqlite.Store
 	Keys     map[string][]byte
 }
 
-type Command interface {
-	Run(ctx *Context) error
+var GlobalContext = &Context{}
+
+var RootCmd = &cobra.Command{
+	Use:   "brain",
+	Short: "Brain is a tool for managing your personal knowledge graph",
 }
 
-var registry = make(map[string]Command)
-
-func Register(name string, cmd Command) {
-	registry[name] = cmd
-}
-
-func Get(name string) Command {
-	return registry[name]
+func Register(cmd *cobra.Command) {
+	RootCmd.AddCommand(cmd)
 }

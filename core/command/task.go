@@ -5,36 +5,38 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+
+	"github.com/spf13/cobra"
 )
 
-type TaskCommand struct{}
+var taskCmd = &cobra.Command{
+	Use:   "task <title> [parentID...]",
+	Short: "Create a new task",
+	Args:  cobra.MinimumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		title := args[0]
+		var parents []object.ID
+		for i := 1; i < len(args); i++ {
+			pID, err := hex.DecodeString(args[i])
+			if err != nil {
+				return fmt.Errorf("invalid parent ID: %s", args[i])
+			}
+			var id object.ID
+			copy(id[:], pID)
+			parents = append(parents, id)
+		}
 
-func init() {
-	Register("task", &TaskCommand{})
+		body, _ := json.Marshal(map[string]string{"title": title, "status": "todo"})
+		o, err := object.New(GlobalContext.Keys["public"], "task", body, parents, GlobalContext.Keys["private"])
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Created task %x\n", o.ID)
+		GlobalContext.Store.Put(o)
+		return nil
+	},
 }
 
-func (c *TaskCommand) Run(ctx *Context) error {
-	if len(ctx.Args) < 1 {
-		return fmt.Errorf("usage: brain task <title> [parentID...]")
-	}
-	title := ctx.Args[0]
-	var parents []object.ID
-	for i := 1; i < len(ctx.Args); i++ {
-		pID, err := hex.DecodeString(ctx.Args[i])
-		if err != nil {
-			return fmt.Errorf("invalid parent ID: %s", ctx.Args[i])
-		}
-		var id object.ID
-		copy(id[:], pID)
-		parents = append(parents, id)
-	}
-
-	body, _ := json.Marshal(map[string]string{"title": title, "status": "todo"})
-	o, err := object.New(ctx.Keys["public"], "task", body, parents, ctx.Keys["private"])
-	if err != nil {
-		return err
-	}
-	fmt.Printf("Created task %x\n", o.ID)
-	ctx.Store.Put(o)
-	return nil
+func init() {
+	Register(taskCmd)
 }

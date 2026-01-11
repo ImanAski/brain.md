@@ -3,27 +3,31 @@ package command
 import (
 	"brain/core/visualize"
 	"fmt"
+
+	"github.com/spf13/cobra"
 )
 
-type GraphCommand struct{}
+var graphCmd = &cobra.Command{
+	Use:   "graph [type]",
+	Short: "Visualize the brain graph",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		vType := "dot"
+		if len(args) > 0 {
+			vType = args[0]
+		}
 
-func init() {
-	Register("graph", &GraphCommand{})
+		v := visualize.Get(vType)
+		if v == nil {
+			return fmt.Errorf("unknown visualizer: %s", vType)
+		}
+
+		objs := GlobalContext.Store.All()
+		links := GlobalContext.Store.Links()
+
+		return v.Visualize(objs, links)
+	},
 }
 
-func (c *GraphCommand) Run(ctx *Context) error {
-	vType := "dot"
-	if len(ctx.Args) > 0 {
-		vType = ctx.Args[0]
-	}
-
-	v := visualize.Get(vType)
-	if v == nil {
-		return fmt.Errorf("unknown visualizer: %s", vType)
-	}
-
-	objs := ctx.Store.All()
-	links := ctx.Store.Links()
-
-	return v.Visualize(objs, links)
+func init() {
+	Register(graphCmd)
 }

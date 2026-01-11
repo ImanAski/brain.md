@@ -8,53 +8,51 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+
 	_ "brain/core/command"
 	_ "brain/core/types"
 	_ "brain/core/visualize"
 )
 
+const VERSION = "0.0.1"
+
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: brain <command>")
-		os.Exit(1)
-	}
+	logger, _ := zap.NewDevelopment()
+	defer logger.Sync()
 
 	rootPath, err := generateRootPath()
 	if err != nil {
 		panic(err)
 	}
 
-	cmdName := os.Args[1]
-	ctx := &command.Context{
-		Args:     os.Args[2:],
-		RootPath: rootPath,
-	}
+	command.GlobalContext.RootPath = rootPath
+	command.RootCmd.Version = VERSION
 
-	if cmdName != "init" {
-		keysFile := filepath.Join(rootPath, "keys.json")
-		dbFile := filepath.Join(rootPath, "index.db")
+	command.RootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if cmd.Name() == "init" || cmd.Name() == "help" || cmd.Name() == "completion" || cmd.Parent() == nil {
+			return nil
+		}
+
+		keysFile := filepath.Join(command.GlobalContext.RootPath, "keys.json")
+		dbFile := filepath.Join(command.GlobalContext.RootPath, "index.db")
 
 		keyData, err := os.ReadFile(keysFile)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: keys.json not found. Run 'brain init' first.\n")
-			os.Exit(1)
+			return fmt.Errorf("keys.json not found. Run 'brain init' first")
 		}
 		var keys map[string][]byte
 		if err = json.Unmarshal(keyData, &keys); err != nil {
-			panic(err)
+			return err
 		}
-		ctx.Keys = keys
-		ctx.Store = sqlite.Open(dbFile)
+		command.GlobalContext.Keys = keys
+		command.GlobalContext.Store = sqlite.Open(dbFile)
+		return nil
 	}
 
-	c := command.Get(cmdName)
-	if c == nil {
-		fmt.Printf("Unknown command: %s\n", cmdName)
+	if err := command.RootCmd.Execute(); err != nil {
 		os.Exit(1)
-	}
-
-	if err := c.Run(ctx); err != nil {
-		panic(err)
 	}
 }
 

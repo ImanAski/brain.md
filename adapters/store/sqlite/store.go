@@ -107,3 +107,30 @@ func (s *Store) Links() []Link {
 	}
 	return out
 }
+
+func (s *Store) Heads() []*object.Object {
+	rows, err := s.db.Query(`
+		SELECT id, type, author, body, signature 
+		FROM objects 
+		WHERE id NOT IN (SELECT parent FROM links)
+	`)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+
+	var out []*object.Object
+	for rows.Next() {
+		o := object.Object{}
+		var body, id, author []byte
+		err = rows.Scan(&id, &o.Type, &author, &body, &o.Signature)
+		if err != nil {
+			panic(err)
+		}
+		copy(o.ID[:], id)
+		o.Author = author
+		o.Body = body
+		out = append(out, &o)
+	}
+	return out
+}

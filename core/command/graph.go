@@ -19,7 +19,7 @@ func (c *GraphCommand) Run(ctx *Context) error {
 
 	v := visualize.Get(vType)
 	if v == nil {
-		return fmt.Errorf("unknown visualizer: %%s", vType)
+		return fmt.Errorf("unknown visualizer: %s", vType)
 	}
 
 	objs := ctx.Store.All()

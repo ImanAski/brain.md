@@ -18,7 +18,7 @@ func (c *ListCommand) Run(ctx *Context) error {
 			fmt.Printf("No handler for type %s\n", o.Type)
 			continue
 		}
-		fmt.Printf("%x %s\n", o.ID[:4], h.Render(o))
+		fmt.Printf("%x %s\n", o.ID, h.Render(o))
 	}
 	return nil
 }
